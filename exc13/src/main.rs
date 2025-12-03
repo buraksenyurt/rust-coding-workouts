@@ -32,9 +32,13 @@ struct Connected {
 // DbConnection yapısı, State tür parametresi ile durumunu belirtir.
 struct DbConnection<State> {
     config: String,
-    // State türü, DbConnection yapısının bir parçası değildir ancak tür sistemi tarafından da izlenmesi gereken bir bilgidir.
-    // Bu nedenle PhantomData kullanılmakta. PhantomData, built-in bir marker type'dır. Rust ile gelen standart tür sistemi dışındaki
-    // tür bilgilerini taşımak için kullanılır.
+    /*
+        State türü, DbConnection yapısının bir parçası değildir ancak tür sistemi tarafından da izlenmesi gereken bir bilgidir.
+        Bu nedenle PhantomData kullanılmakta. PhantomData, built-in bir marker type'dır.
+        Derleme zamanında tür bilgisi olarak kullanılır, çalışma zamanında ise herhangi bir veri tutmaz.
+        Zero Cost Abstraction (Sıfır Maliyetli Soyutlama) prensibine uygundur. 
+        Bir başka deyişle, çalışma zamanında herhangi bir ek maliyet getirmez.
+    */
     state: std::marker::PhantomData<State>,
 }
 

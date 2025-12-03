@@ -1589,14 +1589,14 @@ async fn call(){
     let start_time = time::Instant::now();
     println!("Service started...");
 
-    // Bad Practice: CPU yoğun işlemi doğrudan asenkron bağlam içinde ele aldığımızda
-    // asıl executor'ı da engeller
-    let pwd = decrypt("some hash value");
+    // // Bad Practice: CPU yoğun işlemi doğrudan asenkron bağlam içinde ele aldığımızda
+    // // asıl executor'ı da engeller
+    // let pwd = decrypt("some hash value");
 
-    // // Good Practice: CPU yoğun işlemi spawn_blocking ile ayrı bir thread pool'a devrediyoruz
-    // let pwd_handle = tokio::task::spawn_blocking(|| {
-    //     decrypt("some hash value")
-    // });
+    // Good Practice: CPU yoğun işlemi spawn_blocking ile ayrı bir thread pool'a devrediyoruz
+    let pwd_handle = tokio::task::spawn_blocking(|| {
+        decrypt("some hash value")
+    });
 
     // Diğer asenkron işlemleri simüle etmek için geçici bir bekleme yapıyoruz
     let io_opt = time::sleep(Duration::from_millis(500));
@@ -1610,12 +1610,12 @@ async fn call(){
             println!("I/O wait is over");
         },
         async {
-            // Bad Practice :
-            println!("Decryption result '{}'",pwd);
-
-            // // Good Practice :
-            // let pwd = pwd_handle.await.expect("Blocking task failed.");
+            // // Bad Practice :
             // println!("Decryption result '{}'",pwd);
+
+            // Good Practice :
+            let pwd = pwd_handle.await.expect("Blocking task failed.");
+            println!("Decryption result '{}'",pwd);
         }
     );
 
@@ -1661,7 +1661,7 @@ Typestate Pattern'de bir nesnenin durumu tür sistemi ile ifade edilir. Böylece
 
 ```rust
 fn main() {
-    let connection = Connection::new();
+    let connection = DbConnection::new();
     let initialized_connection = connection.initialize("server=localhost;port=8080");
     match initialized_connection.connect() {
         Ok(_connected_connection) => {
@@ -1691,41 +1691,45 @@ struct Connected {
     _address: String,
 }
 
-// Connection yapısı, State tür parametresi ile durumunu belirtir.
-struct Connection<State> {
+// DbConnection yapısı, State tür parametresi ile durumunu belirtir.
+struct DbConnection<State> {
     config: String,
-    // State türü, Connection yapısının bir parçası değildir ancak tür sistemi tarafından da izlenmesi gereken bir bilgidir.
-    // Bu nedenle PhantomData kullanılmakta. PhantomData, built-in bir marker type'dır. Rust ile gelen standart tür sistemi dışındaki
-    // tür bilgilerini taşımak için kullanılır.
+    /*
+        State türü, DbConnection yapısının bir parçası değildir ancak tür sistemi tarafından da izlenmesi gereken bir bilgidir.
+        Bu nedenle PhantomData kullanılmakta. PhantomData, built-in bir marker type'dır.
+        Derleme zamanında tür bilgisi olarak kullanılır, çalışma zamanında ise herhangi bir veri tutmaz.
+        Zero Cost Abstraction (Sıfır Maliyetli Soyutlama) prensibine uygundur. 
+        Bir başka deyişle, çalışma zamanında herhangi bir ek maliyet getirmez.
+    */
     state: std::marker::PhantomData<State>,
 }
 
-impl Connection<Disconnected> {
+impl DbConnection<Disconnected> {
     fn new() -> Self {
         println!("Creating new connection");
-        Connection {
+        DbConnection {
             config: String::new(),
             state: std::marker::PhantomData,
         }
     }
 
-    fn initialize(mut self, config: &str) -> Connection<Initialized> {
+    fn initialize(mut self, config: &str) -> DbConnection<Initialized> {
         println!("Initializing connection with config: {}", config);
         self.config = config.to_string();
 
-        Connection {
+        DbConnection {
             config: self.config,
             state: std::marker::PhantomData,
         }
     }
 }
 
-impl Connection<Initialized> {
-    fn connect(self) -> Result<Connection<Connected>, String> {
+impl DbConnection<Initialized> {
+    fn connect(self) -> Result<DbConnection<Connected>, String> {
         println!("Connecting with config: {}", self.config);
         // Konfigürasyon geçerli ise ve bağlantı başarılı ise Connected durumuna geçiş yaparız.
         // Aksi halde hata döneriz. Burada basit bir örnek olması için her zaman başarılı sonuç dönüyoruz.
-        Ok(Connection {
+        Ok(DbConnection {
             config: self.config,
             state: std::marker::PhantomData,
         })

@@ -10,14 +10,14 @@ async fn call(){
     let start_time = time::Instant::now();
     println!("Service started...");
 
-    // Bad Practice: CPU yoğun işlemi doğrudan asenkron bağlam içinde ele aldığımızda
-    // asıl executor'ı da engeller
-    let pwd = decrypt("some hash value");
+    // // Bad Practice: CPU yoğun işlemi doğrudan asenkron bağlam içinde ele aldığımızda
+    // // asıl executor'ı da engeller
+    // let pwd = decrypt("some hash value");
 
-    // // Good Practice: CPU yoğun işlemi spawn_blocking ile ayrı bir thread pool'a devrediyoruz
-    // let pwd_handle = tokio::task::spawn_blocking(|| {
-    //     decrypt("some hash value")
-    // });
+    // Good Practice: CPU yoğun işlemi spawn_blocking ile ayrı bir thread pool'a devrediyoruz
+    let pwd_handle = tokio::task::spawn_blocking(|| {
+        decrypt("some hash value")
+    });
 
     // Diğer asenkron işlemleri simüle etmek için geçici bir bekleme yapıyoruz
     let io_opt = time::sleep(Duration::from_millis(500));
@@ -31,12 +31,12 @@ async fn call(){
             println!("I/O wait is over");
         },
         async {
-            // Bad Practice :
-            println!("Decryption result '{}'",pwd);
-
-            // // Good Practice :
-            // let pwd = pwd_handle.await.expect("Blocking task failed.");
+            // // Bad Practice :
             // println!("Decryption result '{}'",pwd);
+
+            // Good Practice :
+            let pwd = pwd_handle.await.expect("Blocking task failed.");
+            println!("Decryption result '{}'",pwd);
         }
     );
 
